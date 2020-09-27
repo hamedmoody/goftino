@@ -134,29 +134,41 @@ class goftino {
     }
     public function append($widget_id = false, $send_userdata = 0)
     {
+        $user_data_script = '';
+
+        if( $send_userdata > 0 && is_user_logged_in() ) {
+
+            $user       = wp_get_current_user();
+
+            $full_name  = trim( $user->first_name .' ' . $user->last_name );
+
+            $user_data  = array(
+                'email'     => $user->user_email,
+                'phone'     => apply_filters( 'goftino_user_phone', false ),
+                'name'      => $full_name ? $full_name : $user->display_name,
+                'about'     => apply_filters( 'goftino_user_about', false ),
+                'avatar'    => apply_filters( 'goftino_user_avatar', false ),
+            );
+
+            /**
+             * Remove Empty data such as about, avatar and phone
+             */
+            $user_data = array_filter( $user_data, function ( $value ) {
+                return $value;
+            } );
+
+            /**
+             * Generate Goftino function for send user data
+             */
+            $user_data_script = 'window.addEventListener(\'goftino_ready\', function (p) { Goftino.setUser(' . json_encode( $user_data ) . ');})';
+
+        }
+
         if ($widget_id) {
             echo '<script type="text/javascript">
 !function(){function g(){var g = document.createElement("script"),s="https://www.goftino.com/widget/'.$widget_id.'";g.type = "text/javascript", g.async = !0,g.src=localStorage.getItem("goftino")?s+"?o="+localStorage.getItem("goftino"):s;var e = document.getElementsByTagName("script")[0];e.parentNode.insertBefore(g, e);}
 var a = window;"complete" === document.readyState ? g() : a.attachEvent ? a.attachEvent("onload", g) : a.addEventListener("load", g, !1);}();';
-            if ($send_userdata > 0 && is_user_logged_in()) {
-                $user_info = get_userdata(get_current_user_id());
-                $fname = $user_info->first_name;
-                $lname = $user_info->last_name;
-                $fullname = "";
-                if (empty($fname) && empty($lname)) {
-                    $fullname = $user_info->user_email;
-                } else {
-                    $fullname = $fname . " " . $lname;
-                }
-
-                echo "
-window.addEventListener('goftino_ready', function (p) { Goftino.setUser({
-    email: '" . $user_info->user_email . "',
-    name: '" . $fullname . "',
-    user_id: '" . get_current_user_id() . "'
-});});
-";
-            }
+            echo $user_data_script;
             echo "</script>";
         }
 
